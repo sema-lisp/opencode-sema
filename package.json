@@ -1,0 +1,51 @@
+{
+  "name": "opencode-sema",
+  "version": "1.0.0",
+  "description": "OpenCode plugin for Sema — LSP, MCP, and theme",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./theme": "./themes/sema.json"
+  },
+  "files": [
+    "dist",
+    "themes",
+    "scripts"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "node scripts/postinstall.mjs",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "sema",
+    "sema-lang",
+    "lisp",
+    "lsp",
+    "mcp"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sema-lisp/opencode-sema.git"
+  },
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": ">=1.0.0"
+  },
+  "devDependencies": {
+    "@opencode-ai/plugin": "^1.18.2",
+    "@types/node": "^26.1.1",
+    "typescript": "^5.7.0"
+  }
+}

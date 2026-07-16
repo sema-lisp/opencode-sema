@@ -51,7 +51,7 @@ cargo install sema-lang
 
 ## Configuration
 
-All configuration is via environment variables:
+The plugin's own knobs are environment variables. The `lsp.sema` / `mcp.sema` / `formatter.sema` entries it registers can instead be overridden directly in `opencode.json` (see [below](#your-own-settings-win)).
 
 | Variable                    | Effect                                                                                                                                          |
 | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -64,7 +64,9 @@ All configuration is via environment variables:
 export SEMA_PATH=~/bin/sema
 ```
 
-The LSP, MCP, and formatter registrations only apply if you haven't already defined `lsp.sema` / `mcp.sema` / `formatter.sema` yourself in `opencode.json` — your own settings always win (e.g. add `"formatter": { "sema": { "disabled": true } }` to disable formatting from config instead of the env var).
+### Your own settings win
+
+The LSP, MCP, and formatter registrations only apply if you haven't already defined `lsp.sema` / `mcp.sema` / `formatter.sema` yourself in `opencode.json` — your own settings always win (e.g. add `"formatter": { "sema": { "disabled": true } }` to disable formatting from config instead of the env var). Note that `SEMA_PATH` and `SEMA_DISABLE_INSTRUCTIONS` have no `opencode.json` equivalent — those are set via the environment only.
 
 ## Theme
 
@@ -83,10 +85,12 @@ cp themes/sema.json "$XDG_CONFIG_HOME/opencode/themes/sema.json"
 ## Commands
 
 ```bash
-npm run build         # Compile TypeScript → dist/
-npm run typecheck     # Typecheck without emitting
-npm run format        # Format with Prettier
-npm run format:check  # Check formatting
+bun install           # Install dependencies
+bun test              # Run the test suite
+bun run build         # Compile TypeScript → dist/
+bun run typecheck     # Typecheck without emitting
+bun run format        # Format with Prettier
+bun run format:check  # Check formatting
 ```
 
 ## Links

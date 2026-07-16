@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Config } from "@opencode-ai/plugin";
-import { OpenCodeSema, expandHome, isBinaryAvailable, isEnvSet } from "./index.js";
+import type { PluginOptions } from "@opencode-ai/plugin";
+import { OpenCodeSema, expandHome, isBinaryAvailable, isEnvSet, resolveBinary } from "./index.js";
 
 const ENV_KEYS = ["SEMA_PATH", "SEMA_DISABLE_FORMATTER", "SEMA_DISABLE_INSTRUCTIONS"];
 const savedEnv: Record<string, string | undefined> = {};
@@ -22,8 +23,8 @@ afterEach(() => {
 });
 
 /** Run the plugin's config hook against `config` and return the mutated object. */
-async function applyConfig(config: Config = {}): Promise<Config> {
-  const hooks = await OpenCodeSema({} as never);
+async function applyConfig(config: Config = {}, options?: PluginOptions): Promise<Config> {
+  const hooks = await OpenCodeSema({} as never, options);
   await hooks.config!(config);
   return config;
 }
@@ -84,6 +85,30 @@ describe("isBinaryAvailable", () => {
     expect(isBinaryAvailable("definitely-not-a-real-binary-xyz")).toBe(false);
     expect(isBinaryAvailable("/tmp")).toBe(false);
     expect(isBinaryAvailable("/etc/hosts")).toBe(false);
+  });
+});
+
+describe("resolveBinary", () => {
+  afterEach(() => delete process.env.SEMA_PATH);
+
+  test("defaults to the bare `sema`", () => {
+    expect(resolveBinary()).toBe("sema");
+    expect(resolveBinary({})).toBe("sema");
+  });
+
+  test("uses the `path` option when no env is set (with ~ expansion)", () => {
+    expect(resolveBinary({ path: "~/bin/sema" })).toBe(homedir() + "/bin/sema");
+  });
+
+  test("SEMA_PATH takes precedence over the `path` option", () => {
+    process.env.SEMA_PATH = "/from/env/sema";
+    expect(resolveBinary({ path: "/from/option/sema" })).toBe("/from/env/sema");
+  });
+
+  test("blank env and blank option fall through to the next source", () => {
+    process.env.SEMA_PATH = "   ";
+    expect(resolveBinary({ path: "/opt/sema" })).toBe("/opt/sema");
+    expect(resolveBinary({ path: "  " })).toBe("sema");
   });
 });
 
@@ -152,5 +177,40 @@ describe("config hook", () => {
     const hooks = await OpenCodeSema({} as never);
     await hooks.config!(config);
     expect(config.instructions).toHaveLength(1);
+  });
+
+  describe("plugin options (opencode.json)", () => {
+    test("`path` option flows into every command", async () => {
+      const config = await applyConfig({}, { path: "~/bin/sema" });
+      const expected = homedir() + "/bin/sema";
+      expect(lsp(config)["sema"].command).toEqual([expected, "lsp"]);
+      expect(mcp(config)["sema"].command).toEqual([expected, "mcp"]);
+      expect(fmt(config)["sema"].command).toEqual([expected, "fmt", "$FILE"]);
+    });
+
+    test("SEMA_PATH env overrides the `path` option", async () => {
+      process.env.SEMA_PATH = "/env/sema";
+      const config = await applyConfig({}, { path: "/option/sema" });
+      expect(lsp(config)["sema"].command).toEqual(["/env/sema", "lsp"]);
+    });
+
+    test("`formatter: false` skips the formatter but nothing else", async () => {
+      const config = await applyConfig({}, { formatter: false });
+      expect(config.formatter).toBeUndefined();
+      expect(lsp(config)["sema"]).toBeDefined();
+      expect(config.instructions).toHaveLength(1);
+    });
+
+    test("`instructions: false` skips the cheat sheet but nothing else", async () => {
+      const config = await applyConfig({}, { instructions: false });
+      expect(config.instructions).toBeUndefined();
+      expect(fmt(config)["sema"]).toBeDefined();
+    });
+
+    test("`formatter: true` keeps the default (env disable still wins)", async () => {
+      process.env.SEMA_DISABLE_FORMATTER = "1";
+      const config = await applyConfig({}, { formatter: true });
+      expect(config.formatter).toBeUndefined();
+    });
   });
 });

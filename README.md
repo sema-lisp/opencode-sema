@@ -35,8 +35,8 @@ npm i -D @sema-lang/opencode-sema
 
 - **Language server** (`sema lsp`) — completions, hover docs, go-to-definition, references, rename, semantic tokens, and formatting for `.sema` files.
 - **MCP server** (`sema mcp`) — exposes Sema's eval, build, compile, docs, and notebook tools to the agent as MCP tools.
-- **Auto-formatting** (`sema fmt`) — every `.sema` file the agent writes or edits is formatted automatically. Opt out with `SEMA_DISABLE_FORMATTER=1`.
-- **Agent guidance** — injects a concise "Sema for LLM agents" cheat sheet into every session so the agent writes idiomatic Sema (slash-namespaced builtins, LLM primitives, the semantics that bite). Opt out with `SEMA_DISABLE_INSTRUCTIONS=1`.
+- **Auto-formatting** (`sema fmt`) — every `.sema` file the agent writes or edits is formatted automatically. Opt out with the `formatter: false` option or `SEMA_DISABLE_FORMATTER=1`.
+- **Agent guidance** — injects a concise "Sema for LLM agents" cheat sheet into every session so the agent writes idiomatic Sema (slash-namespaced builtins, LLM primitives, the semantics that bite). Opt out with the `instructions: false` option or `SEMA_DISABLE_INSTRUCTIONS=1`.
 - **Theme** — a dark, gold-accented Sema editor theme (optional — see [Theme](#theme)).
 
 ## Requirements
@@ -51,14 +51,32 @@ cargo install sema-lang
 
 ## Configuration
 
-The plugin's own knobs are environment variables. The `lsp.sema` / `mcp.sema` / `formatter.sema` entries it registers can instead be overridden directly in `opencode.json` (see [below](#your-own-settings-win)).
+The plugin can be configured two ways: **plugin options** in `opencode.json` (committed, per-project) and **environment variables** (per-machine / CI). For any setting that supports both, the environment wins, so an env var stays a reliable local override of committed config.
 
-| Variable                    | Effect                                                                                                                                          |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `SEMA_PATH`                 | Path to the `sema` binary. A leading `~` is expanded; a bare name is resolved on `PATH` (so `sema` / `sema.exe` both work). Defaults to `sema`. |
-| `SEMA_DISABLE_FORMATTER`    | Set to `1` to skip registering `sema fmt` as the `.sema` formatter.                                                                             |
-| `SEMA_DISABLE_INSTRUCTIONS` | Set to `1` to skip injecting the Sema agent cheat sheet.                                                                                        |
-| `OPENCODE_NO_THEME_COPY`    | Set to `1` to skip the `postinstall` theme copy.                                                                                                |
+### Plugin options
+
+Pass options using the tuple form of the `plugin` array in `opencode.json`:
+
+```json
+{
+  "plugin": [["@sema-lang/opencode-sema", { "path": "~/bin/sema", "formatter": false }]]
+}
+```
+
+| Option         | Type      | Effect                                                                                                              |
+| -------------- | --------- | ------------------------------------------------------------------------------------------------------------------- |
+| `path`         | `string`  | Path to the `sema` binary. A leading `~` is expanded; a bare name is resolved on `PATH`. Overridden by `SEMA_PATH`. |
+| `formatter`    | `boolean` | Set to `false` to skip registering `sema fmt` as the `.sema` formatter. Default `true`.                             |
+| `instructions` | `boolean` | Set to `false` to skip injecting the Sema agent cheat sheet. Default `true`.                                        |
+
+### Environment variables
+
+| Variable                    | Effect                                                                                                                                                                                   |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SEMA_PATH`                 | Path to the `sema` binary. A leading `~` is expanded; a bare name is resolved on `PATH` (so `sema` / `sema.exe` both work). Takes precedence over the `path` option. Defaults to `sema`. |
+| `SEMA_DISABLE_FORMATTER`    | Set to `1` to skip registering `sema fmt` as the `.sema` formatter.                                                                                                                      |
+| `SEMA_DISABLE_INSTRUCTIONS` | Set to `1` to skip injecting the Sema agent cheat sheet.                                                                                                                                 |
+| `OPENCODE_NO_THEME_COPY`    | Set to `1` to skip the `postinstall` theme copy.                                                                                                                                         |
 
 ```bash
 export SEMA_PATH=~/bin/sema
@@ -66,7 +84,7 @@ export SEMA_PATH=~/bin/sema
 
 ### Your own settings win
 
-The LSP, MCP, and formatter registrations only apply if you haven't already defined `lsp.sema` / `mcp.sema` / `formatter.sema` yourself in `opencode.json` — your own settings always win (e.g. add `"formatter": { "sema": { "disabled": true } }` to disable formatting from config instead of the env var). Note that `SEMA_PATH` and `SEMA_DISABLE_INSTRUCTIONS` have no `opencode.json` equivalent — those are set via the environment only.
+The LSP, MCP, and formatter registrations only apply if you haven't already defined `lsp.sema` / `mcp.sema` / `formatter.sema` yourself in `opencode.json` — your own settings always win (e.g. add `"formatter": { "sema": { "disabled": true } }`, or a global `"formatter": false`, to disable formatting from config instead of the env var or plugin option).
 
 ## Theme
 

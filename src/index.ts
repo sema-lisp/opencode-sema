@@ -1,17 +1,15 @@
-import { existsSync } from "node:fs";
 import { homedir } from "node:os";
-import { delimiter, dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import type { Plugin } from "@opencode-ai/plugin";
 
-const here = dirname(fileURLToPath(import.meta.url));
+const here = import.meta.dirname;
 
 /**
  * Expand a leading `~` to the user's home directory so a value like
  * `SEMA_PATH=~/bin/sema` resolves correctly. Handles both `/` and `\`
  * separators for Windows. A bare `sema` (resolved on PATH) is returned as-is.
  */
-function expandHome(p: string): string {
+export function expandHome(p: string): string {
   if (p === "~") return homedir();
   if (p.startsWith("~/") || p.startsWith("~\\")) return homedir() + p.slice(1);
   return p;
@@ -19,37 +17,26 @@ function expandHome(p: string): string {
 
 /**
  * True when `bin` resolves to an executable — either a direct path or a bare
- * name found on PATH. Cross-platform: honors PATHEXT on Windows. Purely
- * filesystem-based (no subprocess), so it's safe to call from the config hook.
+ * name found on PATH. `Bun.which` checks PATH (and PATHEXT on Windows) for
+ * bare names and rejects directories and non-executable files. OpenCode runs
+ * plugins under Bun, so the global is always present.
  */
-function isBinaryAvailable(bin: string): boolean {
-  const hasSep = bin.includes("/") || bin.includes("\\");
-  const dirs = hasSep ? [""] : (process.env.PATH ?? "").split(delimiter);
-  const exts =
-    process.platform === "win32"
-      ? ["", ...(process.env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").split(";")]
-      : [""];
-  for (const dir of dirs) {
-    const base = hasSep ? bin : join(dir, bin);
-    if (!base) continue;
-    for (const ext of exts) {
-      if (existsSync(base + ext)) return true;
-    }
-  }
-  return false;
+export function isBinaryAvailable(bin: string): boolean {
+  return Bun.which(bin) !== null;
 }
 
 /** A `SEMA_*` toggle is "set" for any value other than unset/empty/`0`/`false`. */
-function isEnvSet(name: string): boolean {
+export function isEnvSet(name: string): boolean {
   const v = process.env[name];
   return v !== undefined && v !== "" && v !== "0" && v.toLowerCase() !== "false";
 }
 
-const semaBinary: string = expandHome(process.env.SEMA_PATH ?? "sema");
-
 export const OpenCodeSema: Plugin = async () => {
   return {
     config: async (config) => {
+      // Read per-call rather than at import so SEMA_PATH set by the host (or
+      // tests) after module load is still honored.
+      const semaBinary = expandHome(process.env.SEMA_PATH ?? "sema");
       // Warn early if the binary is missing — otherwise the LSP/MCP/formatter
       // all fail later with an opaque spawn error.
       if (!isBinaryAvailable(semaBinary)) {

@@ -1,0 +1,20 @@
+# The published tarball is driven by package.json "files" (allowlist:
+# dist, themes, scripts). This .npmignore is belt-and-suspenders — it trims
+# artifacts that live *inside* an allowlisted dir (e.g. source maps in dist/)
+# and defensively excludes source/tooling that should never ship.
+
+# Source maps — not needed by consumers
+*.map
+dist/**/*.map
+
+# TypeScript build metadata
+*.tsbuildinfo
+
+# Source & tooling (never in the allowlist anyway)
+src/
+tsconfig.json
+Jakefile
+.github/
+.editorconfig
+.prettierrc
+.nvmrc

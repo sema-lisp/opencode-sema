@@ -1,8 +1,21 @@
 {
-  "name": "opencode-sema",
-  "version": "1.0.0",
+  "name": "@sema-lang/opencode-sema",
   "description": "OpenCode plugin for Sema — LSP, MCP, and theme",
+  "version": "1.0.0",
   "type": "module",
+  "license": "MIT",
+  "author": "Helge Sverre <helge.sverre@gmail.com>",
+  "homepage": "https://sema-lang.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sema-lisp/opencode-sema.git"
+  },
+  "bugs": {
+    "url": "https://github.com/sema-lisp/opencode-sema/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -15,11 +28,14 @@
   "files": [
     "dist",
     "themes",
-    "scripts"
+    "scripts",
+    "!dist/**/*.map"
   ],
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "postinstall": "node scripts/postinstall.mjs",
     "prepublishOnly": "npm run build"
   },
@@ -32,20 +48,13 @@
     "lsp",
     "mcp"
   ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/sema-lisp/opencode-sema.git"
-  },
-  "license": "MIT",
-  "publishConfig": {
-    "access": "public"
-  },
   "peerDependencies": {
     "@opencode-ai/plugin": ">=1.0.0"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "^1.18.2",
     "@types/node": "^26.1.1",
-    "typescript": "^5.7.0"
+    "prettier": "^3.9.5",
+    "typescript": "^7.0.2"
   }
 }

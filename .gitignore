@@ -1,3 +1,8 @@
 node_modules/
 dist/
 *.tsbuildinfo
+.jake/
+
+# npm is the source of truth (package-lock.json); ignore Bun's lockfile that
+# OpenCode's Bun-based plugin install may drop here.
+bun.lock

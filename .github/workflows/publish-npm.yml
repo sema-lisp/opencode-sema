@@ -1,10 +1,13 @@
 name: Publish to npm
 
-# Publishes opencode-sema to npm via Trusted Publishing (OIDC) — no token.
+# Publishes @sema-lang/opencode-sema to npm via Trusted Publishing (OIDC) — no token.
 #
 # npm whitelists this workflow's *filename* + repo for the package's trusted
-# publisher. Configure once on npmjs.org: package opencode-sema -> repo
-# sema-lisp/opencode-sema -> workflow `publish-npm.yml`.
+# publisher, keyed on the PACKAGE NAME. Configure once on npmjs.org:
+# package @sema-lang/opencode-sema -> repo sema-lisp/opencode-sema ->
+# workflow `publish-npm.yml`. Because npm keys trusted publishing on the package
+# name, the first publish of the scoped name must be done manually (or the
+# trusted publisher must be (re)configured for @sema-lang/opencode-sema).
 #
 # Trigger by pushing a `v*` tag (version taken from the tag).
 
@@ -24,7 +27,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
-          node-version: "24"
+          node-version: "26"
           registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies

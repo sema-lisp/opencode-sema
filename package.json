@@ -1,7 +1,7 @@
 {
   "name": "@sema-lang/opencode-sema",
   "description": "OpenCode plugin for Sema — LSP, MCP, and theme",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "license": "MIT",
   "author": "Helge Sverre <helge.sverre@gmail.com>",
@@ -32,6 +32,7 @@
     "dist",
     "themes",
     "scripts",
+    "instructions",
     "!dist/**/*.map"
   ],
   "scripts": {

@@ -35,6 +35,8 @@ npm i -D @sema-lang/opencode-sema
 
 - **Language server** (`sema lsp`) — completions, hover docs, go-to-definition, references, rename, semantic tokens, and formatting for `.sema` files.
 - **MCP server** (`sema mcp`) — exposes Sema's eval, build, compile, docs, and notebook tools to the agent as MCP tools.
+- **Auto-formatting** (`sema fmt`) — every `.sema` file the agent writes or edits is formatted automatically. Opt out with `SEMA_DISABLE_FORMATTER=1`.
+- **Agent guidance** — injects a concise "Sema for LLM agents" cheat sheet into every session so the agent writes idiomatic Sema (slash-namespaced builtins, LLM primitives, the semantics that bite). Opt out with `SEMA_DISABLE_INSTRUCTIONS=1`.
 - **Theme** — a dark, gold-accented Sema editor theme (optional — see [Theme](#theme)).
 
 ## Requirements
@@ -49,11 +51,20 @@ cargo install sema-lang
 
 ## Configuration
 
-Customize the Sema binary path via environment variable. A leading `~` is expanded to your home directory, and the value is resolved on `PATH` (so `sema` / `sema.exe` both work):
+All configuration is via environment variables:
+
+| Variable                    | Effect                                                                                                                                          |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `SEMA_PATH`                 | Path to the `sema` binary. A leading `~` is expanded; a bare name is resolved on `PATH` (so `sema` / `sema.exe` both work). Defaults to `sema`. |
+| `SEMA_DISABLE_FORMATTER`    | Set to `1` to skip registering `sema fmt` as the `.sema` formatter.                                                                             |
+| `SEMA_DISABLE_INSTRUCTIONS` | Set to `1` to skip injecting the Sema agent cheat sheet.                                                                                        |
+| `OPENCODE_NO_THEME_COPY`    | Set to `1` to skip the `postinstall` theme copy.                                                                                                |
 
 ```bash
 export SEMA_PATH=~/bin/sema
 ```
+
+The LSP, MCP, and formatter registrations only apply if you haven't already defined `lsp.sema` / `mcp.sema` / `formatter.sema` yourself in `opencode.json` — your own settings always win (e.g. add `"formatter": { "sema": { "disabled": true } }` to disable formatting from config instead of the env var).
 
 ## Theme
 

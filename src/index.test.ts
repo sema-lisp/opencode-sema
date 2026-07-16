@@ -1,8 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Config } from "@opencode-ai/plugin";
-import type { PluginOptions } from "@opencode-ai/plugin";
+import type { Config, PluginOptions } from "@opencode-ai/plugin";
 import { OpenCodeSema, expandHome, isBinaryAvailable, isEnvSet, resolveBinary } from "./index.js";
 
 const ENV_KEYS = ["SEMA_PATH", "SEMA_DISABLE_FORMATTER", "SEMA_DISABLE_INSTRUCTIONS"];
@@ -89,8 +88,6 @@ describe("isBinaryAvailable", () => {
 });
 
 describe("resolveBinary", () => {
-  afterEach(() => delete process.env.SEMA_PATH);
-
   test("defaults to the bare `sema`", () => {
     expect(resolveBinary()).toBe("sema");
     expect(resolveBinary({})).toBe("sema");
@@ -186,12 +183,6 @@ describe("config hook", () => {
       expect(lsp(config)["sema"].command).toEqual([expected, "lsp"]);
       expect(mcp(config)["sema"].command).toEqual([expected, "mcp"]);
       expect(fmt(config)["sema"].command).toEqual([expected, "fmt", "$FILE"]);
-    });
-
-    test("SEMA_PATH env overrides the `path` option", async () => {
-      process.env.SEMA_PATH = "/env/sema";
-      const config = await applyConfig({}, { path: "/option/sema" });
-      expect(lsp(config)["sema"].command).toEqual(["/env/sema", "lsp"]);
     });
 
     test("`formatter: false` skips the formatter but nothing else", async () => {

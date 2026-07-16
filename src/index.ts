@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Plugin, PluginOptions } from "@opencode-ai/plugin";
+import type { Plugin } from "@opencode-ai/plugin";
 
 const here = import.meta.dirname;
 
@@ -50,11 +50,6 @@ export function isEnvSet(name: string): boolean {
   return v !== undefined && v !== "" && v !== "0" && v.toLowerCase() !== "false";
 }
 
-/** Narrow the untyped `PluginOptions` bag to the fields we understand. */
-function asSemaOptions(options?: PluginOptions): SemaOptions {
-  return (options ?? {}) as SemaOptions;
-}
-
 /**
  * Resolve the `sema` binary path: `SEMA_PATH` env, then the `path` option, then
  * the default `sema`. Blank/whitespace values fall through so `SEMA_PATH=""`
@@ -67,7 +62,8 @@ export function resolveBinary(opts: SemaOptions = {}): string {
 }
 
 export const OpenCodeSema: Plugin = async (_input, options) => {
-  const opts = asSemaOptions(options);
+  // Narrow the untyped PluginOptions bag to the fields we understand.
+  const opts = (options ?? {}) as SemaOptions;
   return {
     config: async (config) => {
       // Read per-call rather than at import so SEMA_PATH set by the host (or

@@ -1,8 +1,20 @@
+import { homedir } from "node:os";
 import type { Plugin } from "@opencode-ai/plugin";
 
-const semaBinary: string = process.env.SEMA_PATH ?? "sema";
+/**
+ * Expand a leading `~` to the user's home directory so a value like
+ * `SEMA_PATH=~/bin/sema` resolves correctly. Handles both `/` and `\`
+ * separators for Windows. A bare `sema` (resolved on PATH) is returned as-is.
+ */
+function expandHome(p: string): string {
+  if (p === "~") return homedir();
+  if (p.startsWith("~/") || p.startsWith("~\\")) return homedir() + p.slice(1);
+  return p;
+}
 
-const OpenCodeSema: Plugin = async () => {
+const semaBinary: string = expandHome(process.env.SEMA_PATH ?? "sema");
+
+export const OpenCodeSema: Plugin = async () => {
   return {
     config: async (config) => {
       if (!config.lsp) config.lsp = {};

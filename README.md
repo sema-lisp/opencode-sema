@@ -49,23 +49,25 @@ cargo install sema-lang
 
 ## Configuration
 
-Customize the Sema binary path via environment variable:
+Customize the Sema binary path via environment variable. A leading `~` is expanded to your home directory, and the value is resolved on `PATH` (so `sema` / `sema.exe` both work):
 
 ```bash
-export SEMA_PATH=/path/to/sema
+export SEMA_PATH=~/bin/sema
 ```
 
 ## Theme
 
-The Sema theme is optional and must be copied into OpenCode's themes directory:
+The plugin ships a dark, gold-accented Sema theme (`themes/sema.json`) and declares it via the `oc-themes` manifest field, so on OpenCode versions that support plugin-contributed themes it is registered automatically once the plugin is listed in your config — OpenCode resolves the correct themes directory for your OS (honoring `XDG_CONFIG_HOME`). Then select `sema` as your theme in OpenCode.
+
+If your OpenCode version doesn't auto-register plugin themes, copy it in manually:
 
 ```bash
 cp themes/sema.json ~/.config/opencode/themes/sema.json
+# or, if XDG_CONFIG_HOME is set:
+cp themes/sema.json "$XDG_CONFIG_HOME/opencode/themes/sema.json"
 ```
 
-> **Note:** When you install the package directly with `npm install`, a `postinstall` script copies the theme for you (skip it with `OPENCODE_NO_THEME_COPY=1`). OpenCode's own auto-install runs through Bun, which **blocks** dependency lifecycle scripts by default (only allow-listed / `trustedDependencies` packages run them), so on the auto-install path use the manual `cp` above.
-
-Then select `sema` as your theme in OpenCode.
+> **Note:** A `postinstall` script also copies the theme on a direct `npm install` (skip it with `OPENCODE_NO_THEME_COPY=1`), but OpenCode's own auto-install runs through Bun, which **blocks** dependency lifecycle scripts by default — so don't rely on it; the `oc-themes` registration and the manual `cp` above are the supported paths.
 
 ## Commands
 

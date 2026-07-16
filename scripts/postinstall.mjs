@@ -9,7 +9,12 @@ if (process.env.OPENCODE_NO_THEME_COPY) {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const themeSource = join(__dirname, "..", "themes", "sema.json");
-const themeDir = join(homedir(), ".config", "opencode", "themes");
+
+// OpenCode resolves its config dir via xdg-basedir on every OS (Windows/macOS
+// included) — i.e. $XDG_CONFIG_HOME/opencode, else ~/.config/opencode. Mirror
+// that here so the theme lands where OpenCode actually looks.
+const configHome = process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
+const themeDir = join(configHome, "opencode", "themes");
 const themeDest = join(themeDir, "sema.json");
 
 // Best-effort: a failed theme copy (read-only $HOME, EACCES, missing HOME)
@@ -18,7 +23,7 @@ try {
   if (!existsSync(themeDest)) {
     mkdirSync(themeDir, { recursive: true });
     copyFileSync(themeSource, themeDest);
-    console.log("opencode-sema: installed Sema theme to ~/.config/opencode/themes/sema.json");
+    console.log(`opencode-sema: installed Sema theme to ${themeDest}`);
   }
 } catch (err) {
   console.warn(

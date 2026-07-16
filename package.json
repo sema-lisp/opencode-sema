@@ -25,6 +25,9 @@
     },
     "./theme": "./themes/sema.json"
   },
+  "oc-themes": [
+    "./themes/sema.json"
+  ],
   "files": [
     "dist",
     "themes",
@@ -48,8 +51,16 @@
     "lsp",
     "mcp"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "peerDependencies": {
     "@opencode-ai/plugin": ">=1.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@opencode-ai/plugin": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@opencode-ai/plugin": "^1.18.2",

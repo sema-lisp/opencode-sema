@@ -42,7 +42,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "postinstall": "node scripts/postinstall.mjs",
-    "prepublishOnly": "bun test && npm run build"
+    "prepublishOnly": "bun test && bun run build"
   },
   "keywords": [
     "opencode",

@@ -7,19 +7,18 @@ on:
 
 jobs:
   build-test:
-    name: Build & typecheck
+    name: Test, typecheck & build
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "26"
-          cache: npm
+      - uses: oven-sh/setup-bun@v2
       - name: Install dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
       - name: Check formatting
-        run: npm run format:check
+        run: bun run format:check
+      - name: Test
+        run: bun test
       - name: Typecheck
-        run: npm run typecheck
+        run: bun run typecheck
       - name: Build
-        run: npm run build
+        run: bun run build

@@ -1,7 +1,9 @@
-# The published tarball is driven by package.json "files" (allowlist:
-# dist, themes, scripts). This .npmignore is belt-and-suspenders — it trims
-# artifacts that live *inside* an allowlisted dir (e.g. source maps in dist/)
-# and defensively excludes source/tooling that should never ship.
+# NOTE: the published tarball is driven entirely by package.json "files"
+# (allowlist: dist, themes, scripts, and "!dist/**/*.map" to drop source maps).
+# npm does NOT consult this root .npmignore while "files" is present, so it is
+# INERT for `npm publish` today. It is kept as an intent marker / safety net for
+# the case where the "files" allowlist is ever removed, and for other tooling
+# that reads .npmignore. If you drop "files", these rules take effect.
 
 # Source maps — not needed by consumers
 *.map

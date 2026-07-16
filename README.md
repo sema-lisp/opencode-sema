@@ -39,10 +39,12 @@ npm i -D @sema-lang/opencode-sema
 
 ## Requirements
 
-The `sema` binary must be installed and on your `PATH`. Install it from [sema-lang.com](https://sema-lang.com), or point the plugin at a custom path with `SEMA_PATH`:
+The `sema` binary must be installed and on your `PATH`. Install it via Homebrew or Cargo, or point the plugin at a custom path with `SEMA_PATH`:
 
 ```bash
-brew install sema-lang/tap/sema
+brew install helgesverre/tap/sema-lang
+# or
+cargo install sema-lang
 ```
 
 ## Configuration
@@ -61,7 +63,7 @@ The Sema theme is optional and must be copied into OpenCode's themes directory:
 cp themes/sema.json ~/.config/opencode/themes/sema.json
 ```
 
-> **Note:** When you install the package directly with `npm install`, a `postinstall` script copies the theme for you (skip it with `OPENCODE_NO_THEME_COPY=1`). OpenCode's own auto-install runs through Bun, which does **not** execute dependency lifecycle scripts, so on the auto-install path use the manual `cp` above.
+> **Note:** When you install the package directly with `npm install`, a `postinstall` script copies the theme for you (skip it with `OPENCODE_NO_THEME_COPY=1`). OpenCode's own auto-install runs through Bun, which **blocks** dependency lifecycle scripts by default (only allow-listed / `trustedDependencies` packages run them), so on the auto-install path use the manual `cp` above.
 
 Then select `sema` as your theme in OpenCode.
 
@@ -74,6 +76,14 @@ npm run format        # Format with Prettier
 npm run format:check  # Check formatting
 ```
 
+## Links
+
+- **Website** — [sema-lang.com](https://sema-lang.com)
+- **Playground** — [sema.run](https://sema.run)
+- **Documentation** — [sema-lang.com/docs](https://sema-lang.com/docs/)
+- **Grammar** — [tree-sitter-sema](https://github.com/sema-lisp/tree-sitter-sema)
+- **Repository** — [sema-lisp/opencode-sema](https://github.com/sema-lisp/opencode-sema)
+
 ## License
 
-MIT © [Helge Sverre](https://github.com/HelgeSverre)
+[MIT](LICENSE) © [Helge Sverre](https://github.com/HelgeSverre)

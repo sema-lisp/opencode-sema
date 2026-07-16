@@ -12,8 +12,17 @@ const themeSource = join(__dirname, "..", "themes", "sema.json");
 const themeDir = join(homedir(), ".config", "opencode", "themes");
 const themeDest = join(themeDir, "sema.json");
 
-if (!existsSync(themeDest)) {
-  mkdirSync(themeDir, { recursive: true });
-  copyFileSync(themeSource, themeDest);
-  console.log("opencode-sema: installed Sema theme to ~/.config/opencode/themes/sema.json");
+// Best-effort: a failed theme copy (read-only $HOME, EACCES, missing HOME)
+// must never fail `npm install`. Fall back to the documented manual `cp`.
+try {
+  if (!existsSync(themeDest)) {
+    mkdirSync(themeDir, { recursive: true });
+    copyFileSync(themeSource, themeDest);
+    console.log("opencode-sema: installed Sema theme to ~/.config/opencode/themes/sema.json");
+  }
+} catch (err) {
+  console.warn(
+    `opencode-sema: could not copy the Sema theme (${err.message}). ` +
+      "Copy it manually: cp themes/sema.json ~/.config/opencode/themes/sema.json",
+  );
 }

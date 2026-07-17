@@ -1,6 +1,9 @@
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Plugin } from "@opencode-ai/plugin";
+import type { Plugin, PluginInput } from "@opencode-ai/plugin";
+
+/** Service name attached to every log entry this plugin writes. */
+const SERVICE = "opencode-sema";
 
 const here = import.meta.dirname;
 
@@ -61,7 +64,19 @@ export function resolveBinary(opts: SemaOptions = {}): string {
   return expandHome(fromEnv || fromOption || "sema");
 }
 
-export const OpenCodeSema: Plugin = async (_input, options) => {
+/**
+ * Best-effort structured log to the OpenCode server. Never throws — a logging
+ * failure (or an absent client, e.g. in tests) must not break config resolution.
+ */
+async function log(input: PluginInput, level: "warn" | "info", message: string): Promise<void> {
+  try {
+    await input.client.app.log({ body: { service: SERVICE, level, message } });
+  } catch {
+    // Logging is advisory; swallow transport/availability errors.
+  }
+}
+
+export const OpenCodeSema: Plugin = async (input, options) => {
   // Narrow the untyped PluginOptions bag to the fields we understand.
   const opts = (options ?? {}) as SemaOptions;
   return {
@@ -72,8 +87,10 @@ export const OpenCodeSema: Plugin = async (_input, options) => {
       // Warn early if the binary is missing — otherwise the LSP/MCP/formatter
       // all fail later with an opaque spawn error.
       if (!isBinaryAvailable(semaBinary)) {
-        console.warn(
-          `opencode-sema: the \`${semaBinary}\` binary was not found on PATH. ` +
+        await log(
+          input,
+          "warn",
+          `the \`${semaBinary}\` binary was not found on PATH. ` +
             "Install Sema (https://sema-lang.com) or set SEMA_PATH — until then the " +
             "LSP, MCP server, and formatter will be unavailable.",
         );

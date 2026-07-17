@@ -7,7 +7,19 @@ import { OpenCodeSema, expandHome, isBinaryAvailable, isEnvSet, resolveBinary } 
 const ENV_KEYS = ["SEMA_PATH", "SEMA_DISABLE_FORMATTER", "SEMA_DISABLE_INSTRUCTIONS"];
 const savedEnv: Record<string, string | undefined> = {};
 
+/** Log entries captured from the mock OpenCode client during the current test. */
+type LogEntry = { service: string; level: string; message: string };
+let logs: LogEntry[] = [];
+
+/** A stand-in for the plugin's `PluginInput` whose client records log calls. */
+function mockInput() {
+  return {
+    client: { app: { log: async ({ body }: { body: LogEntry }) => void logs.push(body) } },
+  } as never;
+}
+
 beforeEach(() => {
+  logs = [];
   for (const key of ENV_KEYS) {
     savedEnv[key] = process.env[key];
     delete process.env[key];
@@ -23,7 +35,7 @@ afterEach(() => {
 
 /** Run the plugin's config hook against `config` and return the mutated object. */
 async function applyConfig(config: Config = {}, options?: PluginOptions): Promise<Config> {
-  const hooks = await OpenCodeSema({} as never, options);
+  const hooks = await OpenCodeSema(mockInput(), options);
   await hooks.config!(config);
   return config;
 }
@@ -171,9 +183,22 @@ describe("config hook", () => {
 
   test("running the hook twice does not duplicate the instructions entry", async () => {
     const config = await applyConfig();
-    const hooks = await OpenCodeSema({} as never);
+    const hooks = await OpenCodeSema(mockInput());
     await hooks.config!(config);
     expect(config.instructions).toHaveLength(1);
+  });
+
+  test("warns via the client logger when the binary is missing", async () => {
+    await applyConfig({}, { path: "/definitely/missing/sema" });
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toMatchObject({ service: "opencode-sema", level: "warn" });
+    expect(logs[0]!.message).toContain("/definitely/missing/sema");
+  });
+
+  test("does not log when the binary resolves", async () => {
+    process.env.SEMA_PATH = "/bin/ls"; // a real executable stands in for `sema`
+    await applyConfig();
+    expect(logs).toHaveLength(0);
   });
 
   describe("plugin options (opencode.json)", () => {

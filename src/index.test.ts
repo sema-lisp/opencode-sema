@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { Config, PluginOptions } from "@opencode-ai/plugin";
-import { OpenCodeSema, expandHome, isBinaryAvailable, isEnvSet, resolveBinary } from "./index.js";
+import * as entry from "./index.js";
+import { OpenCodeSema } from "./index.js";
+import { expandHome, isBinaryAvailable, isEnvSet, resolveBinary } from "./options.js";
 
 const ENV_KEYS = ["SEMA_PATH", "SEMA_DISABLE_FORMATTER", "SEMA_DISABLE_INSTRUCTIONS"];
 const savedEnv: Record<string, string | undefined> = {};
@@ -122,6 +124,11 @@ describe("resolveBinary", () => {
 });
 
 describe("config hook", () => {
+  test("exports only the deduplicated plugin aliases", () => {
+    expect(Object.keys(entry).sort()).toEqual(["OpenCodeSema", "default"]);
+    expect(entry.default).toBe(entry.OpenCodeSema);
+  });
+
   test("populates lsp, mcp, formatter, and instructions on an empty config", async () => {
     const config = await applyConfig();
     expect(lsp(config)["sema"]).toEqual({ command: ["sema", "lsp"], extensions: [".sema"] });
@@ -160,6 +167,11 @@ describe("config hook", () => {
   test("respects a global `formatter: false`", async () => {
     const config = await applyConfig({ formatter: false } as Config);
     expect(config.formatter).toBe(false as never);
+  });
+
+  test("respects a global `lsp: false`", async () => {
+    const config = await applyConfig({ lsp: false } as Config);
+    expect(config.lsp).toBe(false as never);
   });
 
   test("SEMA_DISABLE_FORMATTER skips the formatter but nothing else", async () => {

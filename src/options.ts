@@ -1,10 +1,10 @@
 import { homedir } from "node:os";
 
 /**
- * Options a user can pass to the plugin from `opencode.json`, using the tuple
- * form of the `plugin` array:
+ * Options a user can pass to the plugin from `opencode.json`, using the object
+ * form of the `plugins` array:
  *
- *   { "plugin": [["@sema-lang/opencode-sema", { "path": "~/bin/sema" }]] }
+ *   { "plugins": [{ "package": "@sema-lang/opencode-sema", "options": { "path": "~/bin/sema" } }] }
  *
  * Precedence is env var > this option > built-in default: the environment stays
  * the per-machine / CI escape hatch, while these give a committed, per-project
@@ -13,7 +13,7 @@ import { homedir } from "node:os";
 export type SemaOptions = {
   /** Path to the `sema` binary. Overridden by `SEMA_PATH`. Defaults to `sema` (resolved on PATH). */
   path?: string;
-  /** Register `sema fmt` as the `.sema` formatter. Default true; `SEMA_DISABLE_FORMATTER=1` also disables. */
+  /** Used by the v1 compatibility entrypoint only. V2 formatter configuration is user-owned. */
   formatter?: boolean;
   /** Inject the Sema agent cheat sheet. Default true; `SEMA_DISABLE_INSTRUCTIONS=1` also disables. */
   instructions?: boolean;

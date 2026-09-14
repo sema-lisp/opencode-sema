@@ -1,7 +1,7 @@
 {
   "name": "@sema-lang/opencode-sema",
-  "description": "OpenCode plugin for Sema — LSP, MCP, and theme",
-  "version": "1.2.0",
+  "description": "OpenCode v1 and v2 plugin for Sema — MCP, guidance, and theme",
+  "version": "2.0.0",
   "type": "module",
   "license": "MIT",
   "author": "Helge Sverre <helge.sverre@gmail.com>",
@@ -56,16 +56,10 @@
   "engines": {
     "node": ">=20"
   },
-  "peerDependencies": {
-    "@opencode-ai/plugin": ">=1.0.0"
-  },
-  "peerDependenciesMeta": {
-    "@opencode-ai/plugin": {
-      "optional": true
-    }
+  "dependencies": {
+    "@opencode/plugin": "^2.0.3"
   },
   "devDependencies": {
-    "@opencode-ai/plugin": "^1.18.2",
     "@types/bun": "^1.3.14",
     "@types/node": "^26.1.1",
     "prettier": "^3.9.5",

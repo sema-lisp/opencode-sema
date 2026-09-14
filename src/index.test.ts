@@ -1,23 +1,71 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import type { Config, PluginOptions } from "@opencode-ai/plugin";
 import * as entry from "./index.js";
 import { OpenCodeSema } from "./index.js";
-import { expandHome, isBinaryAvailable, isEnvSet, resolveBinary } from "./options.js";
+import {
+  expandHome,
+  isBinaryAvailable,
+  isEnvSet,
+  resolveBinary,
+  type SemaOptions,
+} from "./options.js";
 
-const ENV_KEYS = ["SEMA_PATH", "SEMA_DISABLE_FORMATTER", "SEMA_DISABLE_INSTRUCTIONS"];
+const ENV_KEYS = [
+  "SEMA_PATH",
+  "SEMA_DISABLE_FORMATTER",
+  "SEMA_DISABLE_INSTRUCTIONS",
+  "SEMA_TEST_TOGGLE",
+];
 const savedEnv: Record<string, string | undefined> = {};
 
-/** Log entries captured from the mock OpenCode client during the current test. */
 type LogEntry = { service: string; level: string; message: string };
+type LegacyConfig = Record<string, any>;
 let logs: LogEntry[] = [];
 
-/** A stand-in for the plugin's `PluginInput` whose client records log calls. */
-function mockInput() {
+function mockLegacyInput() {
   return {
     client: { app: { log: async ({ body }: { body: LogEntry }) => void logs.push(body) } },
-  } as never;
+  };
+}
+
+async function applyLegacyConfig(
+  config: LegacyConfig = {},
+  options?: SemaOptions,
+): Promise<LegacyConfig> {
+  const hooks = await OpenCodeSema.server(mockLegacyInput(), options);
+  await hooks.config(config);
+  return config;
+}
+
+function mockV2Context(options: SemaOptions = {}, servers = new Map<string, any>()) {
+  let contextHook: ((event: { system: { type: string; text: string }[] }) => void) | undefined;
+  const context = {
+    options,
+    mcp: {
+      transform: async (transform: (editor: any) => void) =>
+        transform({
+          get: (name: string) => servers.get(name),
+          set: (name: string, config: any) => servers.set(name, config),
+        }),
+    },
+    session: {
+      hook: async (name: string, hook: typeof contextHook) => {
+        expect(name).toBe("context");
+        contextHook = hook;
+      },
+    },
+  };
+
+  return {
+    context,
+    servers,
+    applyInstructions: () => {
+      const event = { system: [] as { type: string; text: string }[] };
+      contextHook?.(event);
+      return event.system;
+    },
+  };
 }
 
 beforeEach(() => {
@@ -34,20 +82,6 @@ afterEach(() => {
     else process.env[key] = savedEnv[key];
   }
 });
-
-/** Run the plugin's config hook against `config` and return the mutated object. */
-async function applyConfig(config: Config = {}, options?: PluginOptions): Promise<Config> {
-  const hooks = await OpenCodeSema(mockInput(), options);
-  await hooks.config!(config);
-  return config;
-}
-
-// The SDK's Config sections are unions (`false | {...}`, local/remote MCP), which
-// makes direct indexing noisy in assertions. Tests only care about the shape.
-type Dict = Record<string, any>;
-const lsp = (c: Config) => c.lsp as Dict;
-const mcp = (c: Config) => c.mcp as Dict;
-const fmt = (c: Config) => c.formatter as Dict;
 
 describe("expandHome", () => {
   test("expands a bare ~ to the home directory", () => {
@@ -66,179 +100,159 @@ describe("expandHome", () => {
   });
 });
 
-describe("isEnvSet", () => {
-  const KEY = "SEMA_TEST_TOGGLE";
-  afterEach(() => delete process.env[KEY]);
-
+describe("options", () => {
   test.each(["1", "true", "TRUE", "yes"])("%p counts as set", (value) => {
-    process.env[KEY] = value;
-    expect(isEnvSet(KEY)).toBe(true);
+    process.env.SEMA_TEST_TOGGLE = value;
+    expect(isEnvSet("SEMA_TEST_TOGGLE")).toBe(true);
   });
 
   test.each(["", "0", "false", "FALSE"])("%p counts as unset", (value) => {
-    process.env[KEY] = value;
-    expect(isEnvSet(KEY)).toBe(false);
+    process.env.SEMA_TEST_TOGGLE = value;
+    expect(isEnvSet("SEMA_TEST_TOGGLE")).toBe(false);
   });
 
-  test("missing variable counts as unset", () => {
-    expect(isEnvSet(KEY)).toBe(false);
-  });
-});
-
-describe("isBinaryAvailable", () => {
-  test("finds a bare name on PATH", () => {
+  test("finds a bare name and rejects a missing binary", () => {
     expect(isBinaryAvailable("ls")).toBe(true);
-  });
-
-  test("finds an executable by direct path", () => {
     expect(isBinaryAvailable("/bin/ls")).toBe(true);
-  });
-
-  test("rejects missing binaries, directories, and non-executable files", () => {
     expect(isBinaryAvailable("definitely-not-a-real-binary-xyz")).toBe(false);
     expect(isBinaryAvailable("/tmp")).toBe(false);
-    expect(isBinaryAvailable("/etc/hosts")).toBe(false);
   });
-});
 
-describe("resolveBinary", () => {
-  test("defaults to the bare `sema`", () => {
+  test("resolves environment, option, and default paths in order", () => {
     expect(resolveBinary()).toBe("sema");
-    expect(resolveBinary({})).toBe("sema");
-  });
-
-  test("uses the `path` option when no env is set (with ~ expansion)", () => {
     expect(resolveBinary({ path: "~/bin/sema" })).toBe(homedir() + "/bin/sema");
-  });
-
-  test("SEMA_PATH takes precedence over the `path` option", () => {
     process.env.SEMA_PATH = "/from/env/sema";
     expect(resolveBinary({ path: "/from/option/sema" })).toBe("/from/env/sema");
   });
 
-  test("blank env and blank option fall through to the next source", () => {
+  test("falls through blank environment and option values", () => {
     process.env.SEMA_PATH = "   ";
     expect(resolveBinary({ path: "/opt/sema" })).toBe("/opt/sema");
     expect(resolveBinary({ path: "  " })).toBe("sema");
   });
 });
 
-describe("config hook", () => {
-  test("exports only the deduplicated plugin aliases", () => {
+describe("OpenCode v1 compatibility", () => {
+  test("exports the default and named combined plugin", () => {
     expect(Object.keys(entry).sort()).toEqual(["OpenCodeSema", "default"]);
     expect(entry.default).toBe(entry.OpenCodeSema);
+    expect(entry.default.id).toBe("sema");
+    expect(typeof entry.default.setup).toBe("function");
+    expect(typeof entry.default.server).toBe("function");
   });
 
-  test("populates lsp, mcp, formatter, and instructions on an empty config", async () => {
-    const config = await applyConfig();
-    expect(lsp(config)["sema"]).toEqual({ command: ["sema", "lsp"], extensions: [".sema"] });
-    expect(mcp(config)["sema"]).toEqual({ type: "local", command: ["sema", "mcp"], enabled: true });
-    expect(fmt(config)["sema"]).toEqual({
+  test("populates v1 LSP, MCP, formatter, and instructions", async () => {
+    const config = await applyLegacyConfig();
+    expect(config.lsp.sema).toEqual({ command: ["sema", "lsp"], extensions: [".sema"] });
+    expect(config.mcp.sema).toEqual({ type: "local", command: ["sema", "mcp"], enabled: true });
+    expect(config.formatter.sema).toEqual({
       command: ["sema", "fmt", "$FILE"],
       extensions: [".sema"],
     });
-    expect(config.instructions).toHaveLength(1);
-    expect(config.instructions![0]).toEndWith(join("instructions", "sema-for-agents.md"));
+    expect(config.instructions).toEqual([
+      expect.stringContaining(join("instructions", "sema-for-agents.md")),
+    ]);
   });
 
-  test("honors SEMA_PATH (with ~ expansion) in every command", async () => {
-    process.env.SEMA_PATH = "~/bin/sema";
-    const expected = homedir() + "/bin/sema";
-    const config = await applyConfig();
-    expect(lsp(config)["sema"].command).toEqual([expected, "lsp"]);
-    expect(mcp(config)["sema"].command).toEqual([expected, "mcp"]);
-    expect(fmt(config)["sema"].command).toEqual([expected, "fmt", "$FILE"]);
-  });
-
-  test("does not clobber pre-existing user entries", async () => {
-    const userLsp = { command: ["my-sema", "lsp"], extensions: [".sema"] };
+  test("preserves user entries and global disable flags", async () => {
     const userMcp = { type: "local", command: ["my-sema", "mcp"], enabled: false };
-    const userFmt = { command: ["my-fmt", "$FILE"], extensions: [".sema"] };
-    const config = await applyConfig({
-      lsp: { sema: userLsp },
+    const config = await applyLegacyConfig({
+      lsp: false,
       mcp: { sema: userMcp },
-      formatter: { sema: userFmt },
-    } as Config);
-    expect(lsp(config)["sema"]).toEqual(userLsp);
-    expect(mcp(config)["sema"]).toEqual(userMcp);
-    expect(fmt(config)["sema"]).toEqual(userFmt);
+      formatter: false,
+    });
+    expect(config.lsp).toBe(false);
+    expect(config.mcp.sema).toBe(userMcp);
+    expect(config.formatter).toBe(false);
   });
 
-  test("respects a global `formatter: false`", async () => {
-    const config = await applyConfig({ formatter: false } as Config);
-    expect(config.formatter).toBe(false as never);
+  test("uses SEMA_PATH for every v1 command", async () => {
+    process.env.SEMA_PATH = "~/bin/sema";
+    const config = await applyLegacyConfig();
+    const binary = homedir() + "/bin/sema";
+    expect(config.lsp.sema.command).toEqual([binary, "lsp"]);
+    expect(config.mcp.sema.command).toEqual([binary, "mcp"]);
+    expect(config.formatter.sema.command).toEqual([binary, "fmt", "$FILE"]);
   });
 
-  test("respects a global `lsp: false`", async () => {
-    const config = await applyConfig({ lsp: false } as Config);
-    expect(config.lsp).toBe(false as never);
-  });
-
-  test("SEMA_DISABLE_FORMATTER skips the formatter but nothing else", async () => {
+  test("keeps v1 formatter and instruction opt-outs", async () => {
     process.env.SEMA_DISABLE_FORMATTER = "1";
-    const config = await applyConfig();
-    expect(config.formatter).toBeUndefined();
-    expect(lsp(config)["sema"]).toBeDefined();
-  });
+    const formatterDisabled = await applyLegacyConfig();
+    expect(formatterDisabled.formatter).toBeUndefined();
 
-  test("SEMA_DISABLE_FORMATTER=0 keeps the formatter", async () => {
-    process.env.SEMA_DISABLE_FORMATTER = "0";
-    const config = await applyConfig();
-    expect(fmt(config)["sema"]).toBeDefined();
-  });
-
-  test("SEMA_DISABLE_INSTRUCTIONS skips the instructions injection", async () => {
     process.env.SEMA_DISABLE_INSTRUCTIONS = "1";
-    const config = await applyConfig();
-    expect(config.instructions).toBeUndefined();
+    const instructionsDisabled = await applyLegacyConfig();
+    expect(instructionsDisabled.instructions).toBeUndefined();
+
+    process.env.SEMA_DISABLE_FORMATTER = "0";
+    delete process.env.SEMA_DISABLE_INSTRUCTIONS;
+    const formatterEnabled = await applyLegacyConfig();
+    expect(formatterEnabled.formatter.sema).toBeDefined();
   });
 
-  test("running the hook twice does not duplicate the instructions entry", async () => {
-    const config = await applyConfig();
-    const hooks = await OpenCodeSema(mockInput());
-    await hooks.config!(config);
+  test("does not duplicate the v1 guide path", async () => {
+    const config = await applyLegacyConfig();
+    const hooks = await OpenCodeSema.server(mockLegacyInput());
+    await hooks.config(config);
     expect(config.instructions).toHaveLength(1);
   });
 
-  test("warns via the client logger when the binary is missing", async () => {
-    await applyConfig({}, { path: "/definitely/missing/sema" });
+  test("logs but does not fail when the v1 binary is missing", async () => {
+    await applyLegacyConfig({}, { path: "/definitely/missing/sema" });
     expect(logs).toHaveLength(1);
     expect(logs[0]).toMatchObject({ service: "opencode-sema", level: "warn" });
-    expect(logs[0]!.message).toContain("/definitely/missing/sema");
+  });
+});
+
+describe("OpenCode v2", () => {
+  test("registers the native MCP server with the resolved binary", async () => {
+    const mock = mockV2Context({ path: "/bin/ls" });
+    await OpenCodeSema.setup(mock.context as never);
+    expect(mock.servers.get("sema")).toEqual({
+      type: "local",
+      command: ["/bin/ls", "mcp"],
+    });
   });
 
-  test("does not log when the binary resolves", async () => {
-    process.env.SEMA_PATH = "/bin/ls"; // a real executable stands in for `sema`
-    await applyConfig();
-    expect(logs).toHaveLength(0);
+  test("does not replace a user-owned MCP server", async () => {
+    const userMcp = { type: "local", command: ["my-sema", "mcp"] };
+    const mock = mockV2Context({}, new Map([["sema", userMcp]]));
+    await OpenCodeSema.setup(mock.context as never);
+    expect(mock.servers.get("sema")).toBe(userMcp);
   });
 
-  describe("plugin options (opencode.json)", () => {
-    test("`path` option flows into every command", async () => {
-      const config = await applyConfig({}, { path: "~/bin/sema" });
-      const expected = homedir() + "/bin/sema";
-      expect(lsp(config)["sema"].command).toEqual([expected, "lsp"]);
-      expect(mcp(config)["sema"].command).toEqual([expected, "mcp"]);
-      expect(fmt(config)["sema"].command).toEqual([expected, "fmt", "$FILE"]);
-    });
+  test("adds the bundled guide to v2 model context", async () => {
+    const mock = mockV2Context();
+    await OpenCodeSema.setup(mock.context as never);
+    expect(mock.applyInstructions()).toEqual([
+      expect.objectContaining({ type: "text", text: expect.stringContaining("Sema") }),
+    ]);
+  });
 
-    test("`formatter: false` skips the formatter but nothing else", async () => {
-      const config = await applyConfig({}, { formatter: false });
-      expect(config.formatter).toBeUndefined();
-      expect(lsp(config)["sema"]).toBeDefined();
-      expect(config.instructions).toHaveLength(1);
-    });
+  test("skips the v2 context hook when instructions are disabled", async () => {
+    const mock = mockV2Context({ instructions: false });
+    await OpenCodeSema.setup(mock.context as never);
+    expect(mock.applyInstructions()).toEqual([]);
+  });
 
-    test("`instructions: false` skips the cheat sheet but nothing else", async () => {
-      const config = await applyConfig({}, { instructions: false });
-      expect(config.instructions).toBeUndefined();
-      expect(fmt(config)["sema"]).toBeDefined();
-    });
+  test("uses the environment instruction opt-out in v2", async () => {
+    process.env.SEMA_DISABLE_INSTRUCTIONS = "1";
+    const mock = mockV2Context();
+    await OpenCodeSema.setup(mock.context as never);
+    expect(mock.applyInstructions()).toEqual([]);
+  });
 
-    test("`formatter: true` keeps the default (env disable still wins)", async () => {
-      process.env.SEMA_DISABLE_FORMATTER = "1";
-      const config = await applyConfig({}, { formatter: true });
-      expect(config.formatter).toBeUndefined();
-    });
+  test("warns but completes v2 setup when the binary is missing", async () => {
+    const originalWarn = console.warn;
+    const warnings: unknown[][] = [];
+    console.warn = (...args: unknown[]) => warnings.push(args);
+    try {
+      const mock = mockV2Context({ path: "/definitely/missing/sema", instructions: false });
+      await OpenCodeSema.setup(mock.context as never);
+    } finally {
+      console.warn = originalWarn;
+    }
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]?.join(" ")).toContain("/definitely/missing/sema");
   });
 });

@@ -1,6 +1,6 @@
 <!--
   Bundled with the @sema-lang/opencode-sema plugin and injected into every
-  OpenCode session via `config.instructions` so the agent writes correct Sema.
+  OpenCode session through the v2 session context hook so the agent writes correct Sema.
   Canonical source: https://sema-lang.com/docs/for-agents  — keep this copy in
   sync when the upstream page changes. Disable injection with
   SEMA_DISABLE_INSTRUCTIONS=1.

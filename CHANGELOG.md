@@ -10,8 +10,7 @@
 - Require OpenCode v2. Remove the v1 entrypoint and its formatter option and
   `SEMA_DISABLE_FORMATTER` environment variable. OpenCode v1 users must pin
   `@sema-lang/opencode-sema@1.2.1`.
-- Inject the bundled Sema guide through the v2 session context hook. V2 does not
-  resolve `instructions` configuration entries.
+- Inject the bundled Sema guide through the v2 session context hook.
 - Document that OpenCode v2 has no LSP runtime and no plugin formatter transform.
   Users must configure the formatter manually; LSP configuration is inactive until
   OpenCode provides an LSP runtime.

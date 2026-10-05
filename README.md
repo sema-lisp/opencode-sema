@@ -15,6 +15,8 @@
 
 An [OpenCode](https://opencode.ai) plugin that wires Sema's MCP server, agent guidance, and editor theme into the agent.
 
+Requires **OpenCode v2**. Version 2.0.0 drops support for OpenCode v1.
+
 ## Install
 
 Add the plugin to your `opencode.json`:
@@ -69,7 +71,6 @@ Pass options using the object form of the `plugins` array in `opencode.json`:
 | Option         | Type      | Effect                                                                                                              |
 | -------------- | --------- | ------------------------------------------------------------------------------------------------------------------- |
 | `path`         | `string`  | Path to the `sema` binary. A leading `~` is expanded; a bare name is resolved on `PATH`. Overridden by `SEMA_PATH`. |
-| `formatter`    | `boolean` | OpenCode v1 compatibility only. It has no effect in v2; configure the formatter in `opencode.json`.                 |
 | `instructions` | `boolean` | Set to `false` to skip injecting the Sema agent cheat sheet. Default `true`.                                        |
 
 ### Environment variables
@@ -77,7 +78,6 @@ Pass options using the object form of the `plugins` array in `opencode.json`:
 | Variable                    | Effect                                                                                                                                                                                   |
 | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `SEMA_PATH`                 | Path to the `sema` binary. A leading `~` is expanded; a bare name is resolved on `PATH` (so `sema` / `sema.exe` both work). Takes precedence over the `path` option. Defaults to `sema`. |
-| `SEMA_DISABLE_FORMATTER`    | OpenCode v1 compatibility only. It has no effect in v2; configure the formatter in `opencode.json`.                                                                                      |
 | `SEMA_DISABLE_INSTRUCTIONS` | Set to `1` to skip injecting the Sema agent cheat sheet.                                                                                                                                 |
 | `OPENCODE_NO_THEME_COPY`    | Set to `1` to skip the `postinstall` theme copy.                                                                                                                                         |
 
@@ -112,9 +112,15 @@ OpenCode v2 supports formatters in project configuration, but its plugin API has
 
 The `lsp` entry is forward-compatible configuration only. It does not enable LSP behavior in current OpenCode v2 releases.
 
-### OpenCode v1 compatibility
+### Upgrade from plugin 1.x
 
-The package also supports OpenCode v1.18.29 and later through its documented combined entrypoint. The v1 path retains automatic LSP, formatter, MCP, and instruction configuration. Earlier v1 releases are not supported by this package version.
+Upgrade OpenCode to v2, then change the `plugin` configuration key to `plugins`
+and use the object form shown above for options. Remove the old `formatter`
+plugin option and `SEMA_DISABLE_FORMATTER` environment variable; configure
+formatting in `opencode.json` instead.
+
+OpenCode v1 users must stay on `@sema-lang/opencode-sema@1.2.1`. Plugin 2.0.0
+has no v1 entrypoint.
 
 ## Theme
 

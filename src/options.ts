@@ -13,8 +13,6 @@ import { homedir } from "node:os";
 export type SemaOptions = {
   /** Path to the `sema` binary. Overridden by `SEMA_PATH`. Defaults to `sema` (resolved on PATH). */
   path?: string;
-  /** Used by the v1 compatibility entrypoint only. V2 formatter configuration is user-owned. */
-  formatter?: boolean;
   /** Inject the Sema agent cheat sheet. Default true; `SEMA_DISABLE_INSTRUCTIONS=1` also disables. */
   instructions?: boolean;
 };
